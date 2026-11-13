@@ -1,0 +1,9 @@
+Refrence/
+extracted/
+.gradle/
+build/
+**/build/
+.env
+.env.*
+*.keystore
+*.jks
