@@ -3,6 +3,7 @@ extracted/
 .gradle/
 build/
 **/build/
+run/
 .env
 .env.*
 *.keystore

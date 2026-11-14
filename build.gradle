@@ -1,0 +1,169 @@
+import groovy.json.JsonSlurper
+
+import java.util.Collections
+import java.util.zip.ZipFile
+
+plugins {
+    id 'base'
+}
+
+def artifactSpecs = [
+    [
+        projectPath: ':versions:mc1_21_11',
+        archiveTask: 'remapJar',
+        archivePath: 'versions/mc1_21_11/build/libs/ascend-client-mc1.21.11',
+        minecraftVersion: '1.21.11',
+        javaVersion: 21,
+        javaMajor: 65
+    ],
+    [
+        projectPath: ':versions:mc26_3',
+        archiveTask: 'jar',
+        archivePath: 'versions/mc26_3/build/libs/ascend-client-mc26.3',
+        minecraftVersion: '26.3',
+        javaVersion: 25,
+        javaMajor: 69
+    ]
+]
+
+tasks.register('buildAll') {
+    group = 'build'
+    description = 'Builds the Ascend Client bootstrap for Minecraft 1.21.11 and 26.3.'
+    dependsOn ':versions:mc1_21_11:build', ':versions:mc26_3:build'
+}
+
+tasks.register('verifyDevelopmentLaunchers') {
+    group = 'verification'
+    description = 'Verifies each Loom development client uses its required Java launcher.'
+    dependsOn ':versions:mc1_21_11:verifyClientLauncher', ':versions:mc26_3:verifyClientLauncher'
+}
+
+tasks.register('verifyArtifacts') {
+    group = 'verification'
+    description = 'Verifies metadata, classes, Java bytecode levels, and reference exclusion in both mod JARs.'
+    dependsOn artifactSpecs.collect { "${it.projectPath}:${it.archiveTask}" }
+    doLast {
+        def modVersion = providers.gradleProperty('mod_version').get()
+        def expectedEntrypoint = 'dev.ascend.client.AscendClient'
+        def expectedClasses = [
+            [path: 'dev/ascend/client/AscendClient.class', javaMajor: null],
+            [path: 'dev/ascend/client/shared/AscendBootstrap.class', javaMajor: 65]
+        ]
+        def forbiddenPathTerms = ['openprestige', 'reference', 'refrence', 'extracted']
+
+        artifactSpecs.each { spec ->
+            def artifactFile = file("${spec.archivePath}-${modVersion}.jar")
+            if (!artifactFile.isFile()) {
+                throw new GradleException("Artifact verification failed: expected JAR does not exist: ${artifactFile}")
+            }
+
+            def archive = new ZipFile(artifactFile)
+            try {
+                def entries = Collections.list(archive.entries())
+                def metadataEntries = entries.findAll { it.name == 'fabric.mod.json' }
+                if (metadataEntries.size() != 1) {
+                    throw new GradleException(
+                        "Artifact verification failed for ${artifactFile}: expected exactly one root fabric.mod.json, found ${metadataEntries.size()}."
+                    )
+                }
+
+                def metadata
+                try {
+                    archive.getInputStream(metadataEntries[0]).withCloseable { stream ->
+                        metadata = new JsonSlurper().parse(stream)
+                    }
+                } catch (Exception exception) {
+                    throw new GradleException(
+                        "Artifact verification failed for ${artifactFile}: fabric.mod.json is not valid JSON.",
+                        exception
+                    )
+                }
+
+                if (metadata.id != 'ascendclient') {
+                    throw new GradleException(
+                        "Artifact verification failed for ${artifactFile}: expected mod id 'ascendclient', found '${metadata.id}'."
+                    )
+                }
+                if (metadata.depends?.minecraft != spec.minecraftVersion) {
+                    throw new GradleException(
+                        "Artifact verification failed for ${artifactFile}: expected Minecraft ${spec.minecraftVersion}, found '${metadata.depends?.minecraft}'."
+                    )
+                }
+                if (metadata.entrypoints?.client != [expectedEntrypoint]) {
+                    throw new GradleException(
+                        "Artifact verification failed for ${artifactFile}: expected client entrypoint '${expectedEntrypoint}', found '${metadata.entrypoints?.client}'."
+                    )
+                }
+
+                expectedClasses.each { expectedClass ->
+                    def classEntries = entries.findAll {
+                        it.name == expectedClass.path || it.name.endsWith("/${expectedClass.path}")
+                    }
+                    if (classEntries.size() != 1) {
+                        throw new GradleException(
+                            "Artifact verification failed for ${artifactFile}: expected exactly one ${expectedClass.path}, found ${classEntries.size()}."
+                        )
+                    }
+
+                    def classBytes = archive.getInputStream(classEntries[0]).withCloseable { stream ->
+                        stream.bytes
+                    }
+                    if (classBytes.length < 8 ||
+                        (classBytes[0] & 0xFF) != 0xCA ||
+                        (classBytes[1] & 0xFF) != 0xFE ||
+                        (classBytes[2] & 0xFF) != 0xBA ||
+                        (classBytes[3] & 0xFF) != 0xBE) {
+                        throw new GradleException(
+                            "Artifact verification failed for ${artifactFile}: ${expectedClass.path} is not a valid Java class file."
+                        )
+                    }
+
+                    def expectedMajor = expectedClass.javaMajor == null ? spec.javaMajor : expectedClass.javaMajor
+                    def actualMajor = ((classBytes[6] & 0xFF) << 8) | (classBytes[7] & 0xFF)
+                    if (actualMajor != expectedMajor) {
+                        throw new GradleException(
+                            "Artifact verification failed for ${artifactFile}: ${expectedClass.path} has class-file version ${actualMajor}; expected ${expectedMajor}."
+                        )
+                    }
+                }
+
+                def referenceEntries = entries.findAll { entry ->
+                    def lowerName = entry.name.toLowerCase(Locale.ROOT)
+                    forbiddenPathTerms.any { term -> lowerName.contains(term) }
+                }
+                if (!referenceEntries.isEmpty()) {
+                    throw new GradleException(
+                        "Artifact verification failed for ${artifactFile}: reference-project content found: ${referenceEntries*.name.join(', ')}."
+                    )
+                }
+
+                logger.lifecycle(
+                    "Verified ${artifactFile}: Minecraft ${spec.minecraftVersion}, mod ${metadata.id}, shared Java 21 and client Java ${spec.javaVersion}."
+                )
+            } finally {
+                archive.close()
+            }
+        }
+    }
+}
+
+tasks.register('verifyGradleDaemonJava') {
+    group = 'verification'
+    description = 'Fails unless the Gradle daemon runs on Java 25.'
+    doLast {
+        def actualVersion = JavaVersion.current().majorVersion.toInteger()
+
+        if (actualVersion != 25) {
+            throw new GradleException("The Gradle daemon must run on Java 25, but is running on Java ${actualVersion}.")
+        }
+
+        logger.lifecycle("Gradle daemon Java version: ${actualVersion}")
+    }
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('buildAll')
+    dependsOn tasks.named('verifyGradleDaemonJava')
+    dependsOn tasks.named('verifyDevelopmentLaunchers')
+    dependsOn tasks.named('verifyArtifacts')
+}

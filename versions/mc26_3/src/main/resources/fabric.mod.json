@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "ascendclient",
+  "version": "${version}",
+  "name": "Ascend Client",
+  "description": "Ascend Client bootstrap for Minecraft 26.3.",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.ascend.client.AscendClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

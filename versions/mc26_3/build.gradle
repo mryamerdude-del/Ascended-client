@@ -1,0 +1,107 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+def targetJavaVersion = providers.gradleProperty('java_version_26_3').get().toInteger()
+
+group = project.mod_group
+version = project.mod_version
+
+base {
+    archivesName = 'ascend-client-mc26.3'
+}
+
+loom {
+    splitEnvironmentSourceSets()
+}
+
+sourceSets {
+    shared {
+        java.srcDir(rootProject.file('shared/src/main/java'))
+    }
+
+    main {
+        compileClasspath += sourceSets.shared.output
+        runtimeClasspath += sourceSets.shared.output
+    }
+
+    client {
+        compileClasspath += sourceSets.main.output + sourceSets.shared.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.shared.output
+    }
+}
+
+loom {
+    mods {
+        ascendclient {
+            sourceSet sourceSets.shared
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+
+    runs {
+        client {
+            client()
+            task {
+                javaLauncher.set(javaToolchains.launcherFor {
+                    languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+                })
+            }
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version_26_3}"
+    implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version_26_3}"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+    options.release = targetJavaVersion
+}
+
+tasks.named('compileSharedJava', JavaCompile).configure {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    options.release = 21
+}
+
+tasks.named('jar') {
+    from sourceSets.shared.output
+}
+
+tasks.register('verifyClientLauncher') {
+    group = 'verification'
+    description = "Verifies runClient uses Java ${targetJavaVersion}."
+    doLast {
+        def launcher = tasks.named('runClient').get().javaLauncher.get()
+        def actualVersion = launcher.metadata.languageVersion.asInt()
+
+        if (actualVersion != targetJavaVersion) {
+            throw new GradleException("runClient must use Java ${targetJavaVersion}, but uses Java ${actualVersion}.")
+        }
+
+        logger.lifecycle("runClient Java ${actualVersion}: ${launcher.metadata.installationPath}")
+    }
+}
+
+def resourceVersion = project.version
+
+processResources {
+    inputs.property 'version', resourceVersion
+    filesMatching('fabric.mod.json') {
+        expand 'version': resourceVersion
+    }
+}

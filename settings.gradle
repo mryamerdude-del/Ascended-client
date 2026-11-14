@@ -1,0 +1,14 @@
+pluginManagement {
+    repositories {
+        maven {
+            url = 'https://maven.fabricmc.net/'
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'ascend-client'
+
+include 'versions:mc1_21_11'
+include 'versions:mc26_3'
