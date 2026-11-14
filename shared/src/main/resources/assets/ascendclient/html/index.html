@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' ascend: 'unsafe-inline'; style-src 'self' ascend: 'unsafe-inline'; img-src 'self' ascend: data:; connect-src 'self' ascend:; font-src 'self' ascend:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Ascend Client</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="stage">
+    <section class="window" aria-label="Ascend Client">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 36 36" fill="none">
+              <path d="M5 27.5 16.8 7l5.5 9.4-4.1 7.1H30" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="m18.7 27.5 5.2-9 7.1 9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="27.5" cy="8.5" r="2" fill="currentColor"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-name">ASCEND</div>
+            <div class="brand-caption">CLIENT</div>
+          </div>
+        </div>
+
+        <div class="nav-label">WORKSPACE</div>
+        <nav class="navigation" aria-label="Main navigation">
+          <button class="nav-item active" type="button" data-page="dashboard">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5.5" height="5.5" rx="1"/><rect x="11.5" y="3" width="5.5" height="5.5" rx="1"/><rect x="3" y="11.5" width="5.5" height="5.5" rx="1"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1"/></svg>
+            <span>Overview</span>
+          </button>
+          <button class="nav-item" type="button" data-page="modules">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M4 10h12M4 14.5h7"/><circle cx="2.5" cy="5.5" r=".5"/><circle cx="2.5" cy="10" r=".5"/><circle cx="2.5" cy="14.5" r=".5"/></svg>
+            <span>Modules</span><span class="nav-count" id="module-count">0</span>
+          </button>
+        </nav>
+
+        <div class="nav-label nav-label-spaced">PREFERENCES</div>
+        <nav class="navigation" aria-label="Preferences">
+          <button class="nav-item" type="button" data-page="settings">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v2M10 15v2M3 10h2M15 10h2M5.05 5.05l1.42 1.42m7.06 7.06 1.42 1.42m0-9.9-1.42 1.42m-7.06 7.06-1.42 1.42"/><circle cx="10" cy="10" r="3.3"/></svg>
+            <span>Settings</span>
+          </button>
+          <button class="nav-item" type="button" data-page="appearance">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.2a6.8 6.8 0 1 0 0 13.6h1.1a1.8 1.8 0 0 0 1.3-3.1 1.2 1.2 0 0 1 .8-2.1h1.1A2.5 2.5 0 0 0 16.8 9C16.2 5.7 13.3 3.2 10 3.2Z"/><circle cx="6.3" cy="9" r=".8"/><circle cx="9.5" cy="6.5" r=".8"/><circle cx="13" cy="7.5" r=".8"/></svg>
+            <span>Appearance</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="connection"><span class="connection-dot"></span><span id="connection-label">CONNECTING</span></div>
+          <div class="version-label" id="version-label">Minecraft —</div>
+          <div class="layout-badge"><span class="layout-badge-dot"></span> ASCEND PRIMARY</div>
+        </div>
+      </aside>
+
+      <div class="content">
+        <header class="topbar">
+          <div class="breadcrumb"><span>ASCEND CLIENT</span><span class="breadcrumb-separator">/</span><span id="breadcrumb-current">OVERVIEW</span></div>
+          <div class="topbar-right">
+            <span class="build-label">BUILD 0.1.0</span>
+            <span class="topbar-divider"></span>
+            <span class="status-text"><span class="status-dot"></span><span id="status-label">READY</span></span>
+          </div>
+        </header>
+
+        <div class="pages">
+          <section class="page active" id="page-dashboard" data-page-view="dashboard">
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow"><span class="eyebrow-line"></span> CLIENT CONTROL CENTER</div>
+                <h1>Welcome to <span class="accent-text">Ascend.</span></h1>
+                <p class="page-subtitle">A new perspective on your client experience.</p>
+              </div>
+              <div class="heading-mark" aria-hidden="true">
+                <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+                <div class="orbit-core"><span></span></div>
+              </div>
+            </div>
+
+            <div class="section-title"><span>LIVE OVERVIEW</span><span class="section-rule"></span></div>
+            <div class="stat-grid">
+              <article class="stat-card">
+                <div class="stat-top"><span class="stat-icon violet"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3 14 4-5 3 3 4-6 3 3"/><path d="M3 4v12h14"/></svg></span><span class="stat-tag">ENVIRONMENT</span></div>
+                <div class="stat-value" id="stat-version">—</div>
+                <div class="stat-foot"><span class="tiny-dot"></span>Java Edition</div>
+              </article>
+              <article class="stat-card">
+                <div class="stat-top"><span class="stat-icon blue"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 7 4v8l-7 4-7-4V6l7-4Z"/><path d="m3.5 6 6.5 4 6.5-4M10 10v8"/></svg></span><span class="stat-tag">ACTIVE LAYOUT</span></div>
+                <div class="stat-value">Ascend Primary</div>
+                <div class="stat-foot"><span class="tiny-dot blue-dot"></span>Built for focus</div>
+              </article>
+              <article class="stat-card">
+                <div class="stat-top"><span class="stat-icon green"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12v12H4z"/><path d="M7 7h6M7 10h6M7 13h3"/></svg></span><span class="stat-tag">MODULES</span></div>
+                <div class="stat-value"><span id="stat-enabled">0</span><span class="stat-total"> / <span id="stat-total">0</span></span></div>
+                <div class="stat-foot"><span class="tiny-dot green-dot"></span>Modules enabled</div>
+              </article>
+            </div>
+
+            <div class="section-title section-title-lower"><span>YOUR WORKSPACE</span><span class="section-rule"></span></div>
+            <div class="workspace-card">
+              <div class="workspace-art" aria-hidden="true">
+                <div class="art-glow"></div><div class="art-grid"></div>
+                <svg class="mountain-art" viewBox="0 0 480 180" fill="none">
+                  <path d="m0 154 94-94 47 49 58-76 57 77 43-43 98 87H0Z" fill="url(#mountain-fill)"/>
+                  <path d="m199 33 17 23-19-9-18 17 20-31Z" fill="#F2EDFF" fill-opacity=".92"/>
+                  <path d="m256 110 43-43 98 87H256Z" fill="#8063CE" fill-opacity=".28"/>
+                  <path d="M0 154h480" stroke="#BDA9FF" stroke-opacity=".35"/>
+                  <defs><linearGradient id="mountain-fill" x1="180" y1="32" x2="180" y2="154" gradientUnits="userSpaceOnUse"><stop stop-color="#A78BFA" stop-opacity=".85"/><stop offset="1" stop-color="#514185" stop-opacity=".12"/></linearGradient></defs>
+                </svg>
+              </div>
+              <div class="workspace-copy">
+                <div class="workspace-kicker"><span class="workspace-kicker-dot"></span> MADE TO MOVE WITH YOU</div>
+                <h2>Make this space<br>your own.</h2>
+                <p>Your Ascend workspace is ready. Explore your settings and shape the experience around you.</p>
+                <button class="text-button" type="button" data-go="appearance">Personalize appearance <span aria-hidden="true">→</span></button>
+              </div>
+              <div class="workspace-corner">A<span>01</span></div>
+            </div>
+
+            <div class="footer-note"><span class="footer-mark">A</span><span>Crafted for a clearer view.</span><span class="footer-line"></span><span class="footer-version">ASCEND CLIENT 0.1.0</span></div>
+          </section>
+
+          <section class="page" id="page-modules" data-page-view="modules">
+            <div class="simple-heading">
+              <div class="eyebrow"><span class="eyebrow-line"></span> CLIENT FEATURES</div>
+              <h1>Modules<span class="accent-text">.</span></h1>
+              <p class="page-subtitle">Your client features, all in one place.</p>
+            </div>
+            <div class="module-toolbar">
+              <label class="search-box">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.8" cy="8.8" r="5.5"/><path d="m13 13 4 4"/></svg>
+                <input id="module-search" type="search" placeholder="Search modules" autocomplete="off" aria-label="Search modules">
+                <span class="search-shortcut">/</span>
+              </label>
+              <span class="module-summary" id="module-summary">0 MODULES</span>
+            </div>
+            <div class="module-list" id="module-list"></div>
+          </section>
+
+          <section class="page" id="page-settings" data-page-view="settings">
+            <div class="simple-heading">
+              <div class="eyebrow"><span class="eyebrow-line"></span> CLIENT PREFERENCES</div>
+              <h1>Settings<span class="accent-text">.</span></h1>
+              <p class="page-subtitle">Fine-tune the way Ascend feels.</p>
+            </div>
+            <div class="settings-group">
+              <div class="settings-group-heading"><span>INTERFACE</span><span class="section-rule"></span></div>
+              <article class="setting-row">
+                <div class="setting-copy"><div class="setting-name">Interface scale</div><div class="setting-description">Adjust the size of the Ascend interface.</div></div>
+                <div class="setting-control range-control"><input id="scale-setting" type="range" min="0.8" max="1.2" step="0.05" aria-label="Interface scale"><output id="scale-output">100%</output></div>
+              </article>
+              <article class="setting-row">
+                <div class="setting-copy"><div class="setting-name">Opening key</div><div class="setting-description">Change this key in Minecraft Options → Controls → Key Binds.</div></div>
+                <div class="keybind-display" id="keybind-display">RIGHT SHIFT</div>
+              </article>
+              <article class="setting-row">
+                <div class="setting-copy"><div class="setting-name">Close on Escape</div><div class="setting-description">Press Escape to close the interface.</div></div>
+                <button class="toggle" id="escape-setting" type="button" role="switch" aria-checked="true" aria-label="Close on Escape"><span></span></button>
+              </article>
+              <article class="setting-row">
+                <div class="setting-copy"><div class="setting-name">Interface animations</div><div class="setting-description">Use subtle transitions when changing pages.</div></div>
+                <button class="toggle" id="animations-setting" type="button" role="switch" aria-checked="true" aria-label="Interface animations"><span></span></button>
+              </article>
+            </div>
+            <div class="settings-group">
+              <div class="settings-group-heading"><span>IN-GAME BACKGROUND</span><span class="section-rule"></span></div>
+              <article class="setting-row">
+                <div class="setting-copy"><div class="setting-name">Background dim</div><div class="setting-description">Set how much the world behind the interface is dimmed.</div></div>
+                <div class="setting-control range-control"><input id="dimming-setting" type="range" min="0" max="0.85" step="0.05" aria-label="Background dim"><output id="dimming-output">58%</output></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="page" id="page-appearance" data-page-view="appearance">
+            <div class="simple-heading">
+              <div class="eyebrow"><span class="eyebrow-line"></span> MAKE IT YOURS</div>
+              <h1>Appearance<span class="accent-text">.</span></h1>
+              <p class="page-subtitle">A few details that make Ascend feel like you.</p>
+            </div>
+            <div class="appearance-card">
+              <div class="appearance-intro">
+                <div class="appearance-swatch" id="appearance-swatch"><span></span></div>
+                <div><div class="setting-name">Accent color</div><div class="setting-description">Choose the highlight color used throughout Ascend.</div></div>
+              </div>
+              <div class="color-picker-row">
+                <div class="color-presets" role="group" aria-label="Accent color presets">
+                  <button class="color-choice" type="button" data-color="#9B7BFF" aria-label="Violet" title="Violet"></button>
+                  <button class="color-choice" type="button" data-color="#5B9DFF" aria-label="Azure" title="Azure"></button>
+                  <button class="color-choice" type="button" data-color="#3FC9A5" aria-label="Jade" title="Jade"></button>
+                  <button class="color-choice" type="button" data-color="#F0A35E" aria-label="Amber" title="Amber"></button>
+                  <button class="color-choice" type="button" data-color="#F078A8" aria-label="Rose" title="Rose"></button>
+                </div>
+                <label class="custom-color"><span>CUSTOM</span><input id="color-setting" type="color" value="#9b7bff" aria-label="Custom accent color"></label>
+              </div>
+            </div>
+            <div class="preview-card">
+              <div class="preview-label">LIVE PREVIEW</div>
+              <div class="preview-content"><div class="preview-icon">A</div><div><div class="preview-title">Ascend Primary</div><div class="preview-subtitle">Your accent color in context</div></div><button class="preview-button" type="button" tabindex="-1">SELECTED</button></div>
+            </div>
+            <div class="appearance-note"><span class="note-icon">✦</span><span>Your choices are saved automatically and will be here next time you play.</span></div>
+          </section>
+        </div>
+      </div>
+    </section>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

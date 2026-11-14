@@ -18,6 +18,7 @@ loom {
 sourceSets {
     shared {
         java.srcDir(rootProject.file('shared/src/main/java'))
+        resources.srcDir(rootProject.file('shared/src/main/resources'))
     }
 
     main {
@@ -56,6 +57,21 @@ dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version_26_3}"
     implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version_26_3}"
+    implementation "maven.modrinth:rinku:${rinku_version_26_3}"
+    sharedCompileOnly "com.google.code.gson:gson:${gson_version}"
+}
+
+repositories {
+    exclusiveContent {
+        forRepository {
+            maven {
+                url = 'https://api.modrinth.com/maven'
+            }
+        }
+        filter {
+            includeGroup 'maven.modrinth'
+        }
+    }
 }
 
 java {

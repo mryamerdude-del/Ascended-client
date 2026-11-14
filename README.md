@@ -1,23 +1,23 @@
 # Ascend Client
 
-Ascend Client is an independently developed Fabric client project. The repository now contains a minimal, buildable bootstrap for Minecraft Java Edition 1.21.11 and 26.3. It does **not** yet contain gameplay features, modules, settings, configuration, rendering, or GUI functionality.
+Ascend Client is an independently developed Fabric client project for Minecraft Java Edition 1.21.11 and 26.3. It has a dual-version bootstrap and an initial in-game GUI foundation with shared Minecraft-independent state and separate version adapters.
 
-The long-term product requirements are two selectable GUI layouts (an original, Ascend-branded Prestige-inspired layout and a dropdown layout) sharing the same module/settings behavior. Users must be able to switch layouts without restarting Minecraft, and the selected layout must persist between sessions. These remain requirements, not implemented features.
+The product goal is two selectable GUI layouts (an original, Ascend-branded Prestige-inspired layout and a dropdown layout) sharing the same module/settings behavior. Users must be able to switch layouts without restarting Minecraft, and the selected layout must persist between sessions. Only the Ascend Primary layout exists today; the dropdown layout and layout switching are still planned.
 
 OpenPrestige material under `Refrence/` and `extracted/` is research material only. Its license has not been verified to permit reuse. Do not copy its code or assets into Ascend.
 
 ## Current implementation
 
-Phase 1 establishes the build and compatibility foundation:
-
 - Two independent Fabric Loom projects build separate client mod JARs.
 - Each project has its own client entrypoint and `fabric.mod.json`.
-- Both entrypoints call the same Minecraft-independent Java class from `shared/src/main/java`.
 - Shared source is compiled independently in both target projects with Java 21 and packaged into both JARs.
 - The 1.21.11 adapter compiles and launches with Java 21; the 26.3 adapter compiles and launches with Java 25.
 - GitHub Actions builds both targets on pushes and pull requests.
+- The original Ascend Primary browser GUI has Overview, Modules, Settings, and Appearance pages. HTML, CSS, and JavaScript are bundled as mod resources and loaded by Rinku through a validated `ascend://` resource handler.
+- A typed JavaScript-to-Java command bridge provides navigation and settings updates. Shared settings validation, page state, and JSON persistence live outside the Minecraft adapters. Interface scale, accent color, animations, background dimming, and close-on-Escape persist in `config/ascendclient/settings.json`.
+- Each adapter registers a Right Shift opening key and supplies the Minecraft version, key name, screen lifecycle, rendering, input, and native bridge integration.
 
-Only the startup message is implemented. No renderer, input system, module registry, settings model, configuration, GUI, injector, or gameplay functionality has been started.
+The Modules page is an empty placeholder; there are no registered modules or gameplay features. The module command is rejected until a real module is registered. No dropdown layout or live layout switching is implemented.
 
 ## Supported bootstrap targets and toolchain
 
@@ -48,21 +48,40 @@ The selected stable Loom 1.19.4 plugin IDs configure and build both targets. The
 |   `-- wrapper/
 |       |-- gradle-wrapper.jar
 |       `-- gradle-wrapper.properties
-|-- shared/src/main/java/dev/ascend/client/shared/AscendBootstrap.java
+|-- shared/
+|   `-- src/main/
+|       |-- java/dev/ascend/client/shared/
+|       |   |-- AscendApplication.java
+|       |   |-- AscendBootstrap.java
+|       |   |-- GuiModule.java
+|       |   |-- GuiPage.java
+|       |   |-- GuiPreferences.java
+|       |   |-- GuiSnapshot.java
+|       |   |-- UiCommand.java
+|       |   `-- UiResponse.java
+|       `-- resources/assets/ascendclient/
+|           |-- html/
+|           |   |-- app.js
+|           |   |-- index.html
+|           |   `-- style.css
+|           `-- lang/en_us.json
 `-- versions/
     |-- mc1_21_11/
     |   |-- build.gradle
     |   `-- src/
     |       |-- client/java/dev/ascend/client/AscendClient.java
-    |       `-- main/resources/fabric.mod.json
+    |       |-- client/java/dev/ascend/client/AscendScreen.java
+    |       |-- main/resources/fabric.mod.json
+    |       `-- test/java/dev/ascend/client/shared/AscendApplicationTest.java
     `-- mc26_3/
         |-- build.gradle
         `-- src/
             |-- client/java/dev/ascend/client/AscendClient.java
+            |-- client/java/dev/ascend/client/AscendScreen.java
             `-- main/resources/fabric.mod.json
 ```
 
-The root Gradle build includes `:versions:mc1_21_11` and `:versions:mc26_3`. In each Loom project, a custom `shared` source set points to the same repository-level shared directory. It has no Minecraft, Fabric, Mixin, or version-specific dependency. The shared task compiles it with Java 21; each client source set compiles at its target Java version. Each target explicitly adds the shared output to its JAR. This avoids a cross-Loom project dependency and ensures both targets package the same shared implementation.
+The root Gradle build includes `:versions:mc1_21_11` and `:versions:mc26_3`. In each Loom project, a custom `shared` source set points to the same repository-level shared directory. It imports no Minecraft, Fabric, Mixin, or version-specific APIs; its only external library use is Gson for configuration and protocol JSON. The shared task compiles it with Java 21; each client source set compiles at its target Java version. Each target adds the shared output and resources to its JAR. This avoids a cross-Loom project dependency and ensures both targets package the same shared implementation.
 
 ### Why there is no `:core` project
 
@@ -84,7 +103,7 @@ On Windows:
 .\gradlew.bat :versions:mc26_3:runClient
 ```
 
-On macOS or Linux, use `./gradlew` with the same task names. `buildAll` builds both target projects. `verifyGradleDaemonJava` fails unless the daemon is Java 25; `verifyDevelopmentLaunchers` checks the configured `runClient` Java launcher for each target without starting a game window. The version-specific `runClient` tasks launch the development clients using their configured Java toolchains.
+On macOS or Linux, use `./gradlew` with the same task names. `buildAll` builds both target projects; their normal `build` tasks run the available tests. `verifyGradleDaemonJava` fails unless the daemon is Java 25; `verifyDevelopmentLaunchers` checks the configured `runClient` Java launcher for each target without starting a game window. The version-specific `runClient` tasks launch the development clients using their configured Java toolchains.
 
 The distributable artifacts are:
 
@@ -97,6 +116,18 @@ The distributable artifacts are:
 
 ## Verification record
 
+### Phase 2 GUI foundation
+
+Verified locally with Gradle 9.8.2, Java 25.0.5 for the daemon and 26.3 client, and Java 21.0.13 for the 1.21.11 client:
+
+- `.\gradlew.bat --no-daemon clean buildAll :versions:mc1_21_11:test verifyGradleDaemonJava verifyDevelopmentLaunchers verifyArtifacts --warning-mode all` — **BUILD SUCCESSFUL in 19s; 22 actionable tasks (21 executed, 1 up-to-date)**. No Gradle deprecation warning was emitted.
+- All 3 shared-application tests passed (0 failures, 0 errors, 0 skipped). Both target builds, Java launcher checks, and `verifyArtifacts` passed. The verifier checked the expected classes and GUI resources, mod metadata, Java 21 shared bytecode and target entrypoint bytecode, and absence of reference-project paths in both JARs.
+- `ascend-client-mc1.21.11-0.1.0.jar` is 48,436 bytes; `ascend-client-mc26.3-0.1.0.jar` is 48,056 bytes.
+- Both development clients loaded Fabric and Ascend. The 1.21.11 GUI opened from the title screen, rendered the Modules page, and displayed a connected state without a bridge error. The 26.3 GUI opened from the title screen and rendered the Overview page with a connected state. Temporary test-only auto-open hooks were removed after these checks.
+- `node --check shared\src\main\resources\assets\ascendclient\html\app.js` and `git diff --check` passed.
+- Both runtime launches emitted a non-fatal FabricLoader warning for nonexistent empty development classpath directories. The placeholder development account also produced expected 401 user-properties/Realms authentication errors; neither prevented startup or GUI verification. No hosted CI run was performed.
+- Runtime testing exposed a JavaScript/native bridge response-shape mismatch. The bridge returns the serialized GUI snapshot directly; the JavaScript handler now renders that snapshot directly and leaves close handling to the Minecraft adapter. Both target GUIs were relaunched and visually checked after the fix.
+
 Verified locally with Gradle 9.8.2 and Java 25.0.5 as the daemon JVM:
 
 - `.\gradlew.bat clean buildAll verifyGradleDaemonJava verifyDevelopmentLaunchers verifyArtifacts --warning-mode all` — **BUILD SUCCESSFUL in 4s; 18 actionable tasks (17 executed, 1 up-to-date)**. Both shared-source and client compilation tasks, both target builds, daemon/launcher checks, and artifact verification passed.
@@ -106,12 +137,12 @@ Verified locally with Gradle 9.8.2 and Java 25.0.5 as the daemon JVM:
 - Both development clients were launched. Fabric loaded Ascend Client, each logged its expected `Ascend Client bootstrap initialized for Minecraft <version>` message, and each reached the Minecraft title screen. The 1.21.11 client was also taken into a single-player world. No startup crash or entrypoint error occurred. The 26.3 client closed cleanly. One 1.21.11 run logged `Could not schedule ConsecutiveExecutor` / `RejectedExecutionException` during integrated-server shutdown under the `(Minecraft)` logger. Ascend has no shutdown hook, server callback, or executor use; a controlled repeat started and closed the same world without reproducing the exception. This is attributed to a transient Minecraft integrated-server shutdown path, not Ascend; the original stack trace did not include frames to isolate the internal caller.
 - Both clients logged non-fatal warnings for missing empty source-set output directories. The development session also logged 401 user-properties and Realms authentication errors because its test account uses a placeholder token; these did not block startup or title-screen access.
 - The Gradle 10 deprecation warning was traced to this build's resource-processing closures reading `project.version` during task execution. Capturing the version during configuration removed it; the final `--warning-mode all` build emitted no Gradle deprecation warning. Gradle only suggested enabling the optional configuration cache.
-- There are no test sources yet; Gradle reported both test tasks as `NO-SOURCE`. The GitHub Actions workflow was updated, but no hosted CI run was performed for this change.
+- At Phase 1 verification, test sources were not present. The GitHub Actions workflow was updated, but no hosted CI run was performed for that change.
 
 ## Compatibility boundaries and open issues
 
-- The bootstrap has been compiled and both development clients reached their title screens against the selected Minecraft/Fabric dependencies. This does not establish compatibility of future rendering or input implementations.
-- No renderer is implemented. Before implementing one, inspect the exact resolved 26.3 Minecraft and Fabric API classes; documentation for 26.2 alone is not evidence of 26.3 compatibility.
+- The browser GUI and its version-specific screen/input adapters were exercised on both target versions. This does not establish compatibility of future gameplay event integrations or modules.
+- The GUI's Content Security Policy permits inline scripts for the CEF query bridge and inline styles for runtime preferences, while disallowing external network resources. Review this policy if bridge or asset-loading behavior changes.
 - Keep rendering, input, events, and Minecraft/Fabric-specific behavior in the version adapters when the APIs differ. Shared code must remain Java-only and Minecraft-independent.
 - Java 25 is required to run the Gradle daemon and the 26.3 development client. Java 21 is required for the 1.21.11 client and shared-source compilation.
 - The final Gradle 9.8.2 build emits no Gradle deprecation warning; Gradle 10 compatibility has not been tested.
@@ -119,10 +150,9 @@ Verified locally with Gradle 9.8.2 and Java 25.0.5 as the daemon JVM:
 ## Roadmap
 
 1. **Foundation — complete:** dual Loom targets, shared Java 21 compilation, target entrypoints and metadata, wrapper/toolchains, CI, automated artifact verification, and local title-screen startup verification for both targets.
-2. **Compatibility and contracts — next:** inspect exact 26.3 rendering, input, and event APIs and define version-adapter interfaces before adding Minecraft integration.
-3. **Shared client model:** design and implement the shared module lifecycle, registry, typed settings, and configuration contracts without Minecraft imports.
-4. **Presentation and persistence:** independently implement the Ascend-branded Prestige-inspired and dropdown layouts over the shared model; support runtime switching and persistent selection.
-5. **Validation and release:** add focused tests, verify both target clients and feature parity, document compatibility, and prepare distribution only after requirements are established.
+2. **GUI foundation — in progress:** the Ascend Primary browser UI, version-specific browser/screen adapters, typed command bridge, shared validated preferences, and local JSON persistence are implemented. Complete the module registry, implement the dropdown layout, and add runtime layout switching with persistent selection.
+3. **Compatibility and shared client model:** inspect exact 26.3 rendering/input/event APIs before gameplay integration; expand the shared module lifecycle, registry, typed settings, and configuration contracts without Minecraft imports.
+4. **Validation and release:** add focused tests for new behavior, verify both target layouts and parity in both clients, document compatibility, and prepare distribution only after requirements are established.
 
 ## Technical references
 
@@ -158,3 +188,11 @@ Verified locally with Gradle 9.8.2 and Java 25.0.5 as the daemon JVM:
 - **Investigation:** The earlier 1.21.11 shutdown log tags `Could not schedule ConsecutiveExecutor` and `RejectedExecutionException` as `(Minecraft)` on the server thread. Ascend's only server-independent shared method formats the startup message, and its client initializer only logs that message; neither Ascend source set uses an executor or registers shutdown work. Repeating the 1.21.11 launch, entering the integrated single-player world, and closing it gracefully did not reproduce the exception. The warning is therefore attributed to a transient Minecraft integrated-server shutdown path, not Ascend. The original log did not contain stack frames, so the specific internal Minecraft caller could not be established.
 - **Verification:** Confirmed the 1.21.11 Fabric/Ascend startup log and clean repeat shutdown; previously captured 26.3 runtime output confirms Fabric/Ascend initialization and title-screen startup. Both JARs passed `verifyArtifacts` and independent content inspection in the clean build recorded above. `git diff --check` passes.
 - **Status:** No code change was warranted for the shutdown warning. Both target startup results and the warning attribution are documented; no CI run was performed locally.
+
+### 2026-11-14 — Phase 2 GUI foundation
+
+- **Changed:** Added a shared GUI state/command model, validated preferences and JSON persistence, bundled Ascend Primary HTML/CSS/JavaScript resources, and version-specific Rinku browser screens with a restricted classpath resource handler and native UI bridge. Updated the artifact verifier to require the GUI classes and resources. Corrected JavaScript to consume the snapshot response actually sent by the bridge and removed temporary test-only auto-open hooks.
+- **Files affected:** `README.md`, `build.gradle`, `gradle.properties`, both version `build.gradle` files, both client entrypoints and mod metadata, both `AscendScreen.java` adapters, `shared/src/main/java/dev/ascend/client/shared/`, `shared/src/main/resources/assets/ascendclient/`, and the 1.21.11 shared-application tests.
+- **Verification:** Clean dual-target build, three unit tests, launcher checks, artifact verification, JavaScript syntax check, and `git diff --check` passed. Both clients rendered the GUI from the title screen with the native bridge connected. No hosted CI run was performed.
+- **Issues:** Development clients still log non-fatal missing-empty-classpath warnings and placeholder-account authentication errors. The dropdown layout, live layout selection, module registry, and gameplay modules remain unimplemented.
+- **Status/roadmap:** GUI foundation is in progress; the module system and second layout are next. The approved shared-source/two-Loom architecture is unchanged.

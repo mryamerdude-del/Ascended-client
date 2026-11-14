@@ -18,6 +18,7 @@ loom {
 sourceSets {
     shared {
         java.srcDir(rootProject.file('shared/src/main/java'))
+        resources.srcDir(rootProject.file('shared/src/main/resources'))
     }
 
     main {
@@ -28,6 +29,11 @@ sourceSets {
     client {
         compileClasspath += sourceSets.main.output + sourceSets.shared.output
         runtimeClasspath += sourceSets.main.output + sourceSets.shared.output
+    }
+
+    test {
+        compileClasspath += sourceSets.shared.output
+        runtimeClasspath += sourceSets.shared.output
     }
 }
 
@@ -57,6 +63,24 @@ dependencies {
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version_1_21_11}"
+    modImplementation "maven.modrinth:rinku:${rinku_version_1_21_11}"
+    sharedCompileOnly "com.google.code.gson:gson:${gson_version}"
+    testImplementation "com.google.code.gson:gson:${gson_version}"
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+repositories {
+    exclusiveContent {
+        forRepository {
+            maven {
+                url = 'https://api.modrinth.com/maven'
+            }
+        }
+        filter {
+            includeGroup 'maven.modrinth'
+        }
+    }
 }
 
 java {
@@ -77,6 +101,10 @@ tasks.named('compileSharedJava', JavaCompile).configure {
         languageVersion = JavaLanguageVersion.of(21)
     }
     options.release = 21
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 tasks.named('jar') {

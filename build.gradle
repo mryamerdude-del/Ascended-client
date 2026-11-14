@@ -13,16 +13,62 @@ def artifactSpecs = [
         archiveTask: 'remapJar',
         archivePath: 'versions/mc1_21_11/build/libs/ascend-client-mc1.21.11',
         minecraftVersion: '1.21.11',
+        rinkuVersion: '>=3.0.4',
         javaVersion: 21,
-        javaMajor: 65
+        javaMajor: 65,
+        classPaths: [
+            'dev/ascend/client/AscendClient.class',
+            'dev/ascend/client/AscendScreen.class',
+            'dev/ascend/client/shared/AscendBootstrap.class',
+            'dev/ascend/client/shared/AscendApplication.class',
+            'dev/ascend/client/shared/AscendApplication$StoredConfiguration.class',
+            'dev/ascend/client/shared/GuiPage.class',
+            'dev/ascend/client/shared/GuiPreferences.class',
+            'dev/ascend/client/shared/GuiModule.class',
+            'dev/ascend/client/shared/GuiSnapshot.class',
+            'dev/ascend/client/shared/UiResponse.class',
+            'dev/ascend/client/shared/UiCommand.class',
+            'dev/ascend/client/shared/UiCommand$RequestState.class',
+            'dev/ascend/client/shared/UiCommand$Navigate.class',
+            'dev/ascend/client/shared/UiCommand$SetUiScale.class',
+            'dev/ascend/client/shared/UiCommand$SetAccentColor.class',
+            'dev/ascend/client/shared/UiCommand$SetAnimationsEnabled.class',
+            'dev/ascend/client/shared/UiCommand$SetBackgroundDimming.class',
+            'dev/ascend/client/shared/UiCommand$SetCloseOnEscape.class',
+            'dev/ascend/client/shared/UiCommand$ToggleModule.class',
+            'dev/ascend/client/shared/UiCommand$Close.class'
+        ]
     ],
     [
         projectPath: ':versions:mc26_3',
         archiveTask: 'jar',
         archivePath: 'versions/mc26_3/build/libs/ascend-client-mc26.3',
         minecraftVersion: '26.3',
+        rinkuVersion: '>=3.0.5',
         javaVersion: 25,
-        javaMajor: 69
+        javaMajor: 69,
+        classPaths: [
+            'dev/ascend/client/AscendClient.class',
+            'dev/ascend/client/AscendScreen.class',
+            'dev/ascend/client/shared/AscendBootstrap.class',
+            'dev/ascend/client/shared/AscendApplication.class',
+            'dev/ascend/client/shared/AscendApplication$StoredConfiguration.class',
+            'dev/ascend/client/shared/GuiPage.class',
+            'dev/ascend/client/shared/GuiPreferences.class',
+            'dev/ascend/client/shared/GuiModule.class',
+            'dev/ascend/client/shared/GuiSnapshot.class',
+            'dev/ascend/client/shared/UiResponse.class',
+            'dev/ascend/client/shared/UiCommand.class',
+            'dev/ascend/client/shared/UiCommand$RequestState.class',
+            'dev/ascend/client/shared/UiCommand$Navigate.class',
+            'dev/ascend/client/shared/UiCommand$SetUiScale.class',
+            'dev/ascend/client/shared/UiCommand$SetAccentColor.class',
+            'dev/ascend/client/shared/UiCommand$SetAnimationsEnabled.class',
+            'dev/ascend/client/shared/UiCommand$SetBackgroundDimming.class',
+            'dev/ascend/client/shared/UiCommand$SetCloseOnEscape.class',
+            'dev/ascend/client/shared/UiCommand$ToggleModule.class',
+            'dev/ascend/client/shared/UiCommand$Close.class'
+        ]
     ]
 ]
 
@@ -45,9 +91,11 @@ tasks.register('verifyArtifacts') {
     doLast {
         def modVersion = providers.gradleProperty('mod_version').get()
         def expectedEntrypoint = 'dev.ascend.client.AscendClient'
-        def expectedClasses = [
-            [path: 'dev/ascend/client/AscendClient.class', javaMajor: null],
-            [path: 'dev/ascend/client/shared/AscendBootstrap.class', javaMajor: 65]
+        def expectedResources = [
+            'assets/ascendclient/lang/en_us.json',
+            'assets/ascendclient/html/index.html',
+            'assets/ascendclient/html/style.css',
+            'assets/ascendclient/html/app.js'
         ]
         def forbiddenPathTerms = ['openprestige', 'reference', 'refrence', 'extracted']
 
@@ -94,14 +142,19 @@ tasks.register('verifyArtifacts') {
                         "Artifact verification failed for ${artifactFile}: expected client entrypoint '${expectedEntrypoint}', found '${metadata.entrypoints?.client}'."
                     )
                 }
+                if (metadata.depends?.rinku != spec.rinkuVersion) {
+                    throw new GradleException(
+                        "Artifact verification failed for ${artifactFile}: expected Rinku ${spec.rinkuVersion}, found '${metadata.depends?.rinku}'."
+                    )
+                }
 
-                expectedClasses.each { expectedClass ->
+                spec.classPaths.each { classPath ->
                     def classEntries = entries.findAll {
-                        it.name == expectedClass.path || it.name.endsWith("/${expectedClass.path}")
+                        it.name == classPath || it.name.endsWith("/${classPath}")
                     }
                     if (classEntries.size() != 1) {
                         throw new GradleException(
-                            "Artifact verification failed for ${artifactFile}: expected exactly one ${expectedClass.path}, found ${classEntries.size()}."
+                            "Artifact verification failed for ${artifactFile}: expected exactly one ${classPath}, found ${classEntries.size()}."
                         )
                     }
 
@@ -114,22 +167,32 @@ tasks.register('verifyArtifacts') {
                         (classBytes[2] & 0xFF) != 0xBA ||
                         (classBytes[3] & 0xFF) != 0xBE) {
                         throw new GradleException(
-                            "Artifact verification failed for ${artifactFile}: ${expectedClass.path} is not a valid Java class file."
+                            "Artifact verification failed for ${artifactFile}: ${classPath} is not a valid Java class file."
                         )
                     }
 
-                    def expectedMajor = expectedClass.javaMajor == null ? spec.javaMajor : expectedClass.javaMajor
+                    def expectedMajor = classPath.startsWith('dev/ascend/client/shared/') ? 65 : spec.javaMajor
                     def actualMajor = ((classBytes[6] & 0xFF) << 8) | (classBytes[7] & 0xFF)
                     if (actualMajor != expectedMajor) {
                         throw new GradleException(
-                            "Artifact verification failed for ${artifactFile}: ${expectedClass.path} has class-file version ${actualMajor}; expected ${expectedMajor}."
+                            "Artifact verification failed for ${artifactFile}: ${classPath} has class-file version ${actualMajor}; expected ${expectedMajor}."
+                        )
+                    }
+                }
+
+                expectedResources.each { resourcePath ->
+                    def resourceEntries = entries.findAll { it.name == resourcePath }
+                    if (resourceEntries.size() != 1) {
+                        throw new GradleException(
+                            "Artifact verification failed for ${artifactFile}: expected exactly one ${resourcePath}, found ${resourceEntries.size()}."
                         )
                     }
                 }
 
                 def referenceEntries = entries.findAll { entry ->
                     def lowerName = entry.name.toLowerCase(Locale.ROOT)
-                    forbiddenPathTerms.any { term -> lowerName.contains(term) }
+                    def pathTerms = lowerName.replaceAll(/[^a-z0-9]+/, ' ').trim().split(/\s+/) as List
+                    forbiddenPathTerms.any { term -> pathTerms.contains(term) }
                 }
                 if (!referenceEntries.isEmpty()) {
                     throw new GradleException(
