@@ -12,13 +12,9 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import org.cef.callback.CefCallback;
-import org.cef.CefClient;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefFrame;
-import org.cef.browser.CefMessageRouter;
 import org.cef.callback.CefQueryCallback;
-import org.cef.handler.CefMessageRouterHandler;
-import org.cef.handler.CefMessageRouterHandlerAdapter;
 import org.cef.handler.CefResourceHandlerAdapter;
 import org.cef.misc.IntRef;
 import org.cef.misc.StringRef;
@@ -35,16 +31,61 @@ import java.util.logging.Logger;
 public final class AscendScreen extends Screen {
     private static final String PAGE_URL = "ascend://ascendclient/index.html";
     private static final Logger LOGGER = Logger.getLogger(AscendScreen.class.getName());
+    private static volatile AscendScreen activeScreen;
 
     private final Screen parent;
-    private RinkuBrowser browser;
-    private CefMessageRouter messageRouter;
-    private CefMessageRouterHandler messageHandler;
+    private volatile RinkuBrowser browser;
     private volatile boolean pageReady;
 
     public AscendScreen(Screen parent) {
         super(Component.literal("Ascend Client"));
         this.parent = parent;
+        activeScreen = this;
+    }
+
+    static boolean routeUiRequest(CefBrowser cefBrowser, CefFrame frame, String request,
+                                  CefQueryCallback callback) {
+        AscendScreen screen = activeScreen;
+        if (screen == null) {
+            callback.failure(403, "Ascend accepts UI requests only from its bundled page.");
+            return true;
+        }
+        return screen.handleUiRequest(cefBrowser, frame, request, callback);
+    }
+
+    private boolean handleUiRequest(CefBrowser cefBrowser, CefFrame frame, String request,
+                                    CefQueryCallback callback) {
+        String frameUrl = frame == null ? null : frame.getURL();
+        RinkuBrowser activeBrowser = browser;
+        int expectedBrowserId = activeBrowser == null ? -1 : activeBrowser.getIdentifier();
+        if (activeBrowser == null || cefBrowser.getIdentifier() != expectedBrowserId
+                || frame == null || !frame.isMain() || !PAGE_URL.equals(frameUrl)) {
+            LOGGER.warning("Rejected Ascend UI request: browser=" + cefBrowser.getIdentifier()
+                    + ", expected=" + expectedBrowserId
+                    + ", mainFrame=" + (frame != null && frame.isMain())
+                    + ", url=" + frameUrl);
+            callback.failure(403, "Ascend accepts UI requests only from its bundled page.");
+            return true;
+        }
+        try {
+            UiResponse response = AscendClient.application.handle(
+                    request,
+                    AscendClient.openingKeybindName(),
+                    activeBrowser.isValid()
+            );
+            pageReady = true;
+            if (response.closeRequested()) {
+                minecraft.execute(() -> {
+                    if (minecraft.screen == AscendScreen.this) {
+                        minecraft.setScreen(parent);
+                    }
+                });
+            }
+            callback.success(response.json());
+        } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
+            callback.failure(400, exception.getMessage());
+        }
+        return true;
     }
 
     @Override
@@ -70,40 +111,6 @@ public final class AscendScreen extends Screen {
                 "",
                 (cefBrowser, frame, url, request) -> new UiResourceHandler()
         );
-        CefClient client = Rinku.getClient().getHandle();
-        messageRouter = CefMessageRouter.create();
-        messageHandler = new CefMessageRouterHandlerAdapter() {
-            @Override
-            public boolean onQuery(CefBrowser cefBrowser, CefFrame frame, long queryId, String request,
-                                   boolean persistent, CefQueryCallback callback) {
-                if (browser == null || cefBrowser.getIdentifier() != browser.getIdentifier()
-                        || frame == null || !frame.isMain() || !PAGE_URL.equals(frame.getURL())) {
-                    callback.failure(403, "Ascend accepts UI requests only from its bundled page.");
-                    return true;
-                }
-                try {
-                    UiResponse response = AscendClient.application.handle(
-                            request,
-                            AscendClient.openingKeybindName(),
-                            browser.isValid()
-                    );
-                    pageReady = true;
-                    if (response.closeRequested()) {
-                        minecraft.execute(() -> {
-                            if (minecraft.screen == AscendScreen.this) {
-                                minecraft.setScreen(parent);
-                            }
-                        });
-                    }
-                    callback.success(response.json());
-                } catch (IOException | IllegalArgumentException exception) {
-                    callback.failure(400, exception.getMessage());
-                }
-                return true;
-            }
-        };
-        messageRouter.addHandler(messageHandler, true);
-        client.addMessageRouter(messageRouter);
         browser = Rinku.createBrowser(PAGE_URL, true);
         resizeBrowser();
     }
@@ -235,17 +242,12 @@ public final class AscendScreen extends Screen {
     @Override
     public void onClose() {
         pageReady = false;
+        if (activeScreen == this) {
+            activeScreen = null;
+        }
         if (browser != null) {
             browser.close();
             browser = null;
-        }
-        if (messageRouter != null && Rinku.isInitialized()) {
-            CefClient client = Rinku.getClient().getHandle();
-            client.removeMessageRouter(messageRouter);
-            messageRouter.removeHandler(messageHandler);
-            messageRouter.dispose();
-            messageRouter = null;
-            messageHandler = null;
         }
         super.onClose();
     }

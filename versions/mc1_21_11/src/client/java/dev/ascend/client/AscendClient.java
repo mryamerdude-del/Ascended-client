@@ -2,12 +2,18 @@ package dev.ascend.client;
 
 import dev.ascend.client.shared.AscendApplication;
 import dev.ascend.client.shared.AscendBootstrap;
+import de.keksuccino.rinku.Rinku;
+import dev.ascend.client.shared.combat.AimAssistModule;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import com.mojang.blaze3d.platform.InputConstants;
+import org.cef.CefClient;
+import org.cef.browser.CefMessageRouter;
+import org.cef.handler.CefMessageRouterHandlerAdapter;
 import org.lwjgl.glfw.GLFW;
 
 import java.io.IOException;
@@ -17,6 +23,7 @@ public final class AscendClient implements ClientModInitializer {
     private static final System.Logger LOGGER = System.getLogger("Ascend Client");
     static AscendApplication application;
     static KeyMapping openGuiKey;
+    private static CefMessageRouter uiMessageRouter;
 
     @Override
     public void onInitializeClient() {
@@ -35,13 +42,43 @@ public final class AscendClient implements ClientModInitializer {
                 GLFW.GLFW_KEY_RIGHT_SHIFT,
                 KeyMapping.Category.MISC
         ));
+        application.registry().register(new AimAssistModule(new AscendAimView(Minecraft.getInstance())));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openGuiKey.consumeClick()) {
                 if (!(client.screen instanceof AscendScreen)) {
                     client.setScreen(new AscendScreen(client.screen));
                 }
             }
+            AscendRotations.tick(client.player);
+            application.registry().tick();
         });
+        if (Rinku.isInitialized()) {
+            registerUiMessageRouter(true);
+        } else {
+            Rinku.scheduleForInit(AscendClient::registerUiMessageRouter);
+        }
+    }
+
+    private static void registerUiMessageRouter(boolean initialized) {
+        if (!initialized) {
+            LOGGER.log(System.Logger.Level.ERROR, "Ascend UI bridge is unavailable because Rinku failed to initialize.");
+            return;
+        }
+        if (uiMessageRouter != null) {
+            return;
+        }
+
+        uiMessageRouter = CefMessageRouter.create();
+        uiMessageRouter.addHandler(new CefMessageRouterHandlerAdapter() {
+            @Override
+            public boolean onQuery(org.cef.browser.CefBrowser browser, org.cef.browser.CefFrame frame,
+                                   long queryId, String request, boolean persistent,
+                                   org.cef.callback.CefQueryCallback callback) {
+                return AscendScreen.routeUiRequest(browser, frame, request, callback);
+            }
+        }, true);
+        CefClient client = Rinku.getClient().getHandle();
+        client.addMessageRouter(uiMessageRouter);
     }
 
     static String openingKeybindName() {

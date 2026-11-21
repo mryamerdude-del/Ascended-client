@@ -17,7 +17,16 @@ OpenPrestige material under `Refrence/` and `extracted/` is research material on
 - A typed JavaScript-to-Java command bridge provides navigation and settings updates. Shared settings validation, page state, and JSON persistence live outside the Minecraft adapters. Interface scale, accent color, animations, background dimming, and close-on-Escape persist in `config/ascendclient/settings.json`.
 - Each adapter registers a Right Shift opening key and supplies the Minecraft version, key name, screen lifecycle, rendering, input, and native bridge integration.
 
-The Modules page is an empty placeholder; there are no registered modules or gameplay features. The module command is rejected until a real module is registered. No dropdown layout or live layout switching is implemented.
+### Module framework (Phase B)
+
+- A Minecraft-independent shared module framework lives in `shared/src/main/java/dev/ascend/client/shared/module/`: `AscendModule` (lifecycle, typed settings list), `ModuleCategory`, `ModuleSetting` (boolean, number with optional out-of-range tolerance, choice, text, hotbar slots; visibility rules that depend on other settings), and `ModuleRegistry` (registration, enable/disable with rollback on failure, validated setting writes, per-module error reporting, tick dispatch that isolates module failures, persistence capture/restore, and GUI snapshots).
+- The command bridge understands `{"action":"module","id","enabled"}` and a new `{"action":"moduleSetting","module","setting","value"}` command; both are validated and applied through the registry. Failures are reported to the GUI as bridge errors and shown in the Modules page.
+- Configuration schema version 2 adds a persisted `modules` block (enabled flag, key code, and every setting value per module id). Schema 1 files still load; unknown or invalid stored values are skipped and reported instead of failing startup.
+- The Modules page renders real registered modules with enable switches, an expandable settings panel (switches, sliders, choice chips, hotbar slot chips, and text inputs), visibility-conditional settings, module status text, and module error messages.
+- The first ported module is **Aim Assist** (`shared/.../combat/`): all seventeen reference settings (names, defaults, ranges, steps, units, choices, conditions, and grouping) with the reference targeting, FOV, priority, aim-point, and rotation-transition math in `AimMath`/`Rotation`/`AimAssistModule`. Shared code contains no Minecraft imports; each adapter implements `AimView` (candidate collection with interpolated and pick-radius-expanded hitboxes, eye/player positions, attack key, item and hotbar whitelists, outline raycasts, and rotation application).
+- Silent rotations are implemented with two small mixins per adapter: `LocalPlayerMixin` spoofs outgoing movement packet rotations around `sendPosition`, and `EntityMixin` redirects the local player's look vector (crosshair picking and attack direction) to the silent rotation while the camera stays still. Without a screen or target the silent rotation returns to the player's view at 55% per tick, matching the reference constants.
+
+Known differences from the reference client are documented in the Verification record under Phase B. The dropdown/live layout switching item remains unimplemented.
 
 ## Supported bootstrap targets and toolchain
 
@@ -120,7 +129,7 @@ The distributable artifacts are:
 
 Verified locally with Gradle 9.8.2, Java 25.0.5 for the daemon and 26.3 client, and Java 21.0.13 for the 1.21.11 client:
 
-- `.\gradlew.bat --no-daemon clean buildAll :versions:mc1_21_11:test verifyGradleDaemonJava verifyDevelopmentLaunchers verifyArtifacts --warning-mode all` — **BUILD SUCCESSFUL in 19s; 22 actionable tasks (21 executed, 1 up-to-date)**. No Gradle deprecation warning was emitted.
+- `.\gradlew.bat --no-daemon clean buildAll :versions:mc1_21_11:test verifyGradleDaemonJava verifyDevelopmentLaunchers verifyArtifacts --warning-mode all` â€” **BUILD SUCCESSFUL in 19s; 22 actionable tasks (21 executed, 1 up-to-date)**. No Gradle deprecation warning was emitted.
 - All 3 shared-application tests passed (0 failures, 0 errors, 0 skipped). Both target builds, Java launcher checks, and `verifyArtifacts` passed. The verifier checked the expected classes and GUI resources, mod metadata, Java 21 shared bytecode and target entrypoint bytecode, and absence of reference-project paths in both JARs.
 - `ascend-client-mc1.21.11-0.1.0.jar` is 48,436 bytes; `ascend-client-mc26.3-0.1.0.jar` is 48,056 bytes.
 - Both development clients loaded Fabric and Ascend. The 1.21.11 GUI opened from the title screen, rendered the Modules page, and displayed a connected state without a bridge error. The 26.3 GUI opened from the title screen and rendered the Overview page with a connected state. Temporary test-only auto-open hooks were removed after these checks.
@@ -130,10 +139,10 @@ Verified locally with Gradle 9.8.2, Java 25.0.5 for the daemon and 26.3 client, 
 
 Verified locally with Gradle 9.8.2 and Java 25.0.5 as the daemon JVM:
 
-- `.\gradlew.bat clean buildAll verifyGradleDaemonJava verifyDevelopmentLaunchers verifyArtifacts --warning-mode all` — **BUILD SUCCESSFUL in 4s; 18 actionable tasks (17 executed, 1 up-to-date)**. Both shared-source and client compilation tasks, both target builds, daemon/launcher checks, and artifact verification passed.
+- `.\gradlew.bat clean buildAll verifyGradleDaemonJava verifyDevelopmentLaunchers verifyArtifacts --warning-mode all` â€” **BUILD SUCCESSFUL in 4s; 18 actionable tasks (17 executed, 1 up-to-date)**. Both shared-source and client compilation tasks, both target builds, daemon/launcher checks, and artifact verification passed.
 - The launcher checks selected Java 21.0.13 for Minecraft 1.21.11 and Java 25.0.5 for Minecraft 26.3.
 - `verifyArtifacts` and a separate inspection of the resulting archives confirmed exactly one copy of each entrypoint and shared class, one root `fabric.mod.json`, the expected `ascendclient` mod ID, Minecraft version and client entrypoint, and no OpenPrestige/reference-project archive entries. The shared class is Java 21 bytecode (major 65) in both JARs; the target entrypoint is major 65 for 1.21.11 and major 69 for 26.3.
-- Artifact details: `ascend-client-mc1.21.11-0.1.0.jar` — 2,902 bytes; `ascend-client-mc26.3-0.1.0.jar` — 2,797 bytes.
+- Artifact details: `ascend-client-mc1.21.11-0.1.0.jar` â€” 2,902 bytes; `ascend-client-mc26.3-0.1.0.jar` â€” 2,797 bytes.
 - Both development clients were launched. Fabric loaded Ascend Client, each logged its expected `Ascend Client bootstrap initialized for Minecraft <version>` message, and each reached the Minecraft title screen. The 1.21.11 client was also taken into a single-player world. No startup crash or entrypoint error occurred. The 26.3 client closed cleanly. One 1.21.11 run logged `Could not schedule ConsecutiveExecutor` / `RejectedExecutionException` during integrated-server shutdown under the `(Minecraft)` logger. Ascend has no shutdown hook, server callback, or executor use; a controlled repeat started and closed the same world without reproducing the exception. This is attributed to a transient Minecraft integrated-server shutdown path, not Ascend; the original stack trace did not include frames to isolate the internal caller.
 - Both clients logged non-fatal warnings for missing empty source-set output directories. The development session also logged 401 user-properties and Realms authentication errors because its test account uses a placeholder token; these did not block startup or title-screen access.
 - The Gradle 10 deprecation warning was traced to this build's resource-processing closures reading `project.version` during task execution. Capturing the version during configuration removed it; the final `--warning-mode all` build emitted no Gradle deprecation warning. Gradle only suggested enabling the optional configuration cache.
@@ -149,22 +158,34 @@ Verified locally with Gradle 9.8.2 and Java 25.0.5 as the daemon JVM:
 
 ## Roadmap
 
-1. **Foundation — complete:** dual Loom targets, shared Java 21 compilation, target entrypoints and metadata, wrapper/toolchains, CI, automated artifact verification, and local title-screen startup verification for both targets.
-2. **GUI foundation — in progress:** the Ascend Primary browser UI, version-specific browser/screen adapters, typed command bridge, shared validated preferences, and local JSON persistence are implemented. Complete the module registry, implement the dropdown layout, and add runtime layout switching with persistent selection.
-3. **Compatibility and shared client model:** inspect exact 26.3 rendering/input/event APIs before gameplay integration; expand the shared module lifecycle, registry, typed settings, and configuration contracts without Minecraft imports.
+1. **Foundation â€” complete:** dual Loom targets, shared Java 21 compilation, target entrypoints and metadata, wrapper/toolchains, CI, automated artifact verification, and local title-screen startup verification for both targets.
+2. **GUI foundation â€” in progress:** the Ascend Primary browser UI, version-specific browser/screen adapters, typed command bridge, shared validated preferences, local JSON persistence, the module registry with per-module settings UI, and live module toggles/settings are implemented. Remaining: the dropdown layout and runtime layout switching with persistent selection.
+3. **Compatibility and shared client model â€” in progress:** the shared module lifecycle, registry, typed settings, configuration contracts, and the Aim Assist combat module are implemented without Minecraft imports; both adapters implement the shared `AimView` surface. Remaining: keep auditing ported modules against the reference implementation, add the reference `Targets` module (entity-type filters, keep target, anti-bot, team/friend filtering) that Aim Assist currently assumes absent, movement correction under silent rotations, and attack-cooldown tracking for the HurtTick priority.
 4. **Validation and release:** add focused tests for new behavior, verify both target layouts and parity in both clients, document compatibility, and prepare distribution only after requirements are established.
 
 ## Technical references
 
 - [Fabric develop/version information](https://fabricmc.net/develop/)
-- [Fabric example mod — Minecraft 1.21.11](https://github.com/FabricMC/fabric-example-mod/tree/1.21.11)
-- [Fabric example mod — Minecraft 26.3](https://github.com/FabricMC/fabric-example-mod/tree/26.3)
+- [Fabric example mod â€” Minecraft 1.21.11](https://github.com/FabricMC/fabric-example-mod/tree/1.21.11)
+- [Fabric example mod â€” Minecraft 26.3](https://github.com/FabricMC/fabric-example-mod/tree/26.3)
 - [Fabric Loom documentation](https://docs.fabricmc.net/develop/loom/)
 - [Gradle Java compatibility matrix](https://docs.gradle.org/current/userguide/compatibility.html)
 
 ## Documentation and handoff log
 
-### 2026-11-13 — Phase 1 multi-version foundation
+### 2026-11-21 - Phase B shared module framework and Aim Assist
+
+- **Changed:** Added the Minecraft-independent module framework (module/ModuleCategory, ModuleSetting, AscendModule, ModuleRegistry), typed GUI settings (GuiSetting, extended GuiModule/GuiSnapshot), the moduleSetting bridge command, configuration schema 2 with a persisted modules block (schema 1 still loads), and the Modules page settings panel (switches, sliders, choice chips, hotbar slot chips, text inputs, conditional visibility, status and error display).
+- **Changed:** Ported Aim Assist as the first module. shared/.../combat/ holds Rotation, AimMath (aim-point selection, 3x5x3 visibility fallback grid, FOV, priority comparators, SNAP/EASED/NATURAL transitions with the reference velocity model), AimAssistModule (all seventeen reference settings with reference names, defaults, ranges, choices, conditions, and grouping), and the adapter-facing AimView. Both adapters implement AscendAimView and AscendRotations; silent rotations use per-adapter LocalPlayerMixin (outgoing packet rotation) and EntityMixin (local-player look vector) mixins with new scendclient-client.mixins.json configs referenced from both abric.mod.json files.
+- **Audit results:** Formulas were compared line-by-line against the reference client. Fixed during the audit: target priority distance bases (Nearest measures player-feet to entity-feet; FOV/HurtTick secondaries measure eye to entity), FOV and priority now always use the real player rotation even while silent, and the module suffix reports the Aim Math selection like the reference. Verified identical: eased step formula, NATURAL smooth-velocity model and clamps, aim-point center-lerp weighting, randomize offsets, fallback grid dimensions, FOV half-angle math, priority tie-breaking (first candidate wins, Stream.min semantics), and speed multipliers (setting * 20). Documented deviations: item whitelist uses a text input (comma-separated ids) instead of the reference item-picker widget; the reference's cached occlusion retry is replaced by an equivalent grid search each tick; HurtTick priority currently always sees lastAttackTick 0 because the reference Targets module and its attack tracker are not ported yet; disable does not defer until the silent return finishes (the return still runs after disable).
+- **Files affected:** shared/src/main/java/dev/ascend/client/shared/ (AscendApplication, UiCommand, GuiModule, GuiSetting, module/*, combat/*), shared/src/main/resources/assets/ascendclient/html/app.js, style.css, ersions/mc1_21_11/src/client/java/dev/ascend/client/ (AscendClient, AscendScreen, AscendRotations, AscendAimView, mixin/*), ersions/mc1_21_11/src/client/resources/ascendclient-client.mixins.json, ersions/mc1_21_11/src/main/resources/fabric.mod.json, ersions/mc1_21_11/src/test/java/dev/ascend/client/shared/ (ModuleRegistryTest, AimAssistMathTest, ModulePersistenceTest), the same adapter/mixin/metadata set for ersions/mc26_3, and uild.gradle artifact verification class lists.
+- **Verification:** .\gradlew.bat build --console=plain - BUILD SUCCESSFUL (daemon Java 25.0.5, 1.21.11 client Java 21, 26.3 client Java 25). :versions:mc1_21_11:test - 38 tests passed, 0 failures (previous 5 application tests plus 33 new module-framework, Aim Assist math, and persistence tests). erifyArtifacts confirmed class lists, bytecode levels (shared major 65; entrypoints 65/69), metadata, GUI resources, mixin configs, and absence of reference-project paths in both JARs. 
+ode --check app.js passed. Git is not available on this machine, so a git diff review was not possible; changes were reviewed file-by-file instead.
+- **Not verified:** In-game behaviour (module ticking, rotations, silent packet spoofing, mixin application at runtime) was not launched in this phase; the mixin injection points were confirmed against the mapped Minecraft JARs with javap (sendPosition() exists in both targets; getViewVector(float) is final in both; calculateViewVector is instance-final in 1.21.11 and static in 26.3). No hosted CI run was performed.
+- **Issues/blockers:** No git executable on PATH. The reference Targets module is required for full targeting parity (entity filters, keep target, anti-bot, teams/friends, attack-cooldown tracking); without it Aim Assist behaves as if no filters are configured, which matches the reference with Targets disabled. Silent-rotation movement correction (reference SilentAim internals) is not ported.
+- **Status/roadmap:** Phase B is complete and verified at build/test level. Next recommended phase: port the Targets internal module and attack-cooldown tracking, then in-game verification of Aim Assist on both targets.
+
+### 2026-11-13 â€” Phase 1 multi-version foundation
 
 - **Changed:** Added a root Gradle build with two Loom targets, a Java 21 shared source set compiled independently in both targets, per-target client entrypoints and metadata, Gradle 9.8.2 wrapper/Java 25 daemon criteria, dual-target CI, and this implementation handoff.
 - **Files affected:** `README.md`, `settings.gradle`, `build.gradle`, `gradle.properties`, `gradle/gradle-daemon-jvm.properties`, `gradle/wrapper/`, `gradlew`, `gradlew.bat`, `.github/workflows/build.yml`, `shared/`, and `versions/`.
@@ -173,7 +194,7 @@ Verified locally with Gradle 9.8.2 and Java 25.0.5 as the daemon JVM:
 - **Status/roadmap:** Phase 1 is complete. Compatibility/interface research and all client functionality remain future work.
 - **Architecture decision:** Keep one shared Minecraft-independent source directory compiled by each version-specific Loom project; do not introduce `:core` unless independent publishing/testing or multiple consumers later justify the added module and its dependency/remapping validation.
 
-### 2026-11-13 — Phase 1 final verification
+### 2026-11-13 â€” Phase 1 final verification
 
 - **Changed:** Added `verifyArtifacts` to check both built JARs' metadata, class counts, bytecode levels, and reference-project exclusion; added it to the push/pull-request workflow. Captured each mod version during Gradle configuration to remove the Gradle 10 deprecation, ignored development-client `run/` data, and updated this README with the complete project tree and verified results.
 - **Files affected:** `.gitignore`, `README.md`, `build.gradle`, `.github/workflows/build.yml`, `versions/mc1_21_11/build.gradle`, and `versions/mc26_3/build.gradle`.
@@ -182,14 +203,14 @@ Verified locally with Gradle 9.8.2 and Java 25.0.5 as the daemon JVM:
 - **Status/roadmap:** Phase 1 final verification is complete. Rendering/input compatibility research and all shared module, settings, configuration, layout, and gameplay functionality remain planned.
 - **Gradle finding:** The removed Gradle 10 deprecation originated in this project's `processResources` closures, which accessed `project.version` during task execution. Final `--warning-mode all` output contains no deprecation warning; only Gradle's optional configuration-cache suggestion remains.
 
-### 2026-11-14 — Pre-publish shutdown investigation
+### 2026-11-14 â€” Pre-publish shutdown investigation
 
 - **Changed:** Updated this README with the shutdown investigation and final publication checks.
 - **Investigation:** The earlier 1.21.11 shutdown log tags `Could not schedule ConsecutiveExecutor` and `RejectedExecutionException` as `(Minecraft)` on the server thread. Ascend's only server-independent shared method formats the startup message, and its client initializer only logs that message; neither Ascend source set uses an executor or registers shutdown work. Repeating the 1.21.11 launch, entering the integrated single-player world, and closing it gracefully did not reproduce the exception. The warning is therefore attributed to a transient Minecraft integrated-server shutdown path, not Ascend. The original log did not contain stack frames, so the specific internal Minecraft caller could not be established.
 - **Verification:** Confirmed the 1.21.11 Fabric/Ascend startup log and clean repeat shutdown; previously captured 26.3 runtime output confirms Fabric/Ascend initialization and title-screen startup. Both JARs passed `verifyArtifacts` and independent content inspection in the clean build recorded above. `git diff --check` passes.
 - **Status:** No code change was warranted for the shutdown warning. Both target startup results and the warning attribution are documented; no CI run was performed locally.
 
-### 2026-11-14 — Phase 2 GUI foundation
+### 2026-11-14 â€” Phase 2 GUI foundation
 
 - **Changed:** Added a shared GUI state/command model, validated preferences and JSON persistence, bundled Ascend Primary HTML/CSS/JavaScript resources, and version-specific Rinku browser screens with a restricted classpath resource handler and native UI bridge. Updated the artifact verifier to require the GUI classes and resources. Corrected JavaScript to consume the snapshot response actually sent by the bridge and removed temporary test-only auto-open hooks.
 - **Files affected:** `README.md`, `build.gradle`, `gradle.properties`, both version `build.gradle` files, both client entrypoints and mod metadata, both `AscendScreen.java` adapters, `shared/src/main/java/dev/ascend/client/shared/`, `shared/src/main/resources/assets/ascendclient/`, and the 1.21.11 shared-application tests.

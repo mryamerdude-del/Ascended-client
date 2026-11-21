@@ -28,10 +28,10 @@ body { color: var(--text); user-select: none; -webkit-font-smoothing: antialiase
 button, input { font: inherit; }
 button { color: inherit; }
 .stage { width: 100vw; height: 100vh; display: grid; place-items: center; padding: 22px; }
-.window { width: min(1160px, 100%); height: min(720px, 100%); min-height: 360px; display: flex; overflow: hidden; position: relative; border: 1px solid rgba(211, 199, 255, .16); border-radius: 12px; background: rgba(17, 17, 22, .97); box-shadow: 0 26px 90px rgba(0, 0, 0, .48), 0 2px 9px rgba(0, 0, 0, .3); animation: window-in .24s cubic-bezier(.2,.8,.2,1) both; }
+.window { width: min(1160px, 100%); height: min(720px, 100%); min-width: 0; min-height: 0; display: flex; overflow: hidden; position: relative; border: 1px solid rgba(211, 199, 255, .16); border-radius: 12px; background: rgba(17, 17, 22, .97); box-shadow: 0 26px 90px rgba(0, 0, 0, .48), 0 2px 9px rgba(0, 0, 0, .3); transform: scale(var(--ui-scale, 1)); transform-origin: center center; animation: window-in .24s cubic-bezier(.2,.8,.2,1) both; }
 .window.closing { animation: window-out .16s ease-in both; }
-@keyframes window-in { from { opacity: 0; transform: translateY(9px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes window-out { to { opacity: 0; transform: translateY(7px) scale(.99); } }
+@keyframes window-in { from { opacity: 0; transform: translateY(9px) scale(var(--ui-scale, 1)) scale(.99); } to { opacity: 1; transform: translateY(0) scale(var(--ui-scale, 1)); } }
+@keyframes window-out { to { opacity: 0; transform: translateY(7px) scale(var(--ui-scale, 1)) scale(.99); } }
 .sidebar { width: 204px; min-width: 204px; display: flex; flex-direction: column; padding: 25px 13px 15px; border-right: 1px solid var(--line); background: rgba(21, 21, 28, .96); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 30px; }
 .brand-mark { width: 31px; height: 31px; display: grid; place-items: center; border: 1px solid rgba(var(--accent-rgb), .35); border-radius: 9px; color: var(--accent); background: var(--accent-soft); }
@@ -140,9 +140,14 @@ h1 { margin: 11px 0 5px; font-size: clamp(24px, 3.2vw, 35px); font-weight: 620; 
 .setting-name { color: #e4e0ec; font-size: 10px; font-weight: 570; }
 .setting-description { margin-top: 4px; color: #807d8b; font-size: 9px; line-height: 1.4; }
 .setting-control { display: flex; align-items: center; gap: 9px; }
-.range-control input { width: 132px; height: 3px; appearance: none; border-radius: 4px; outline: none; background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--range-progress,50%), #393743 var(--range-progress,50%), #393743 100%); cursor: pointer; }
-.range-control input::-webkit-slider-thumb { width: 11px; height: 11px; appearance: none; border: 2px solid #e6ddff; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.14); }
-.range-control output { width: 33px; color: #aaa6b4; font-size: 9px; text-align: right; font-variant-numeric: tabular-nums; }
+.range-control input { width: 180px; height: 36px; padding: 0; appearance: none; background: transparent; cursor: pointer; touch-action: none; }
+.range-control input::-webkit-slider-runnable-track { height: 6px; border-radius: 4px; background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--range-progress,50%), #494753 var(--range-progress,50%), #494753 100%); }
+.range-control input::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -7px; appearance: none; border: 2px solid #e6ddff; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(var(--accent-rgb),.16); }
+.range-control input::-moz-range-track { height: 6px; border-radius: 4px; background: #494753; }
+.range-control input::-moz-range-progress { height: 6px; border-radius: 4px; background: var(--accent); }
+.range-control input::-moz-range-thumb { width: 20px; height: 20px; border: 2px solid #e6ddff; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px rgba(var(--accent-rgb),.16); }
+.range-control input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.range-control output { width: 43px; color: #c5b6ff; font-size: 10px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
 .toggle { width: 31px; height: 17px; position: relative; padding: 0; border: 1px solid #46434f; border-radius: 12px; background: #302e38; cursor: pointer; transition: background .15s, border-color .15s; }
 .toggle span { width: 11px; height: 11px; position: absolute; top: 2px; left: 2px; border-radius: 50%; background: #aaa6b4; transition: transform .15s, background .15s; }
 .toggle[aria-checked="true"] { border-color: rgba(var(--accent-rgb),.6); background: rgba(var(--accent-rgb),.3); }
@@ -207,3 +212,30 @@ h1 { margin: 11px 0 5px; font-size: clamp(24px, 3.2vw, 35px); font-weight: 620; 
   .workspace-copy { padding-top: 15px; }
   .section-title-lower { margin-top: 14px; }
 }
+
+.module-card-actions { display: flex; align-items: center; gap: 9px; }
+.module-expand { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text-muted); cursor: pointer; transition: background .15s, color .15s; }
+.module-expand:hover { background: var(--panel-hover); color: var(--text); }
+.module-expand svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+.module-expand.open svg { transform: rotate(180deg); }
+.module-status { margin-top: 3px; color: var(--accent); font-size: 8px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.module-settings { display: grid; gap: 9px; margin: 2px 0 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.module-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.module-setting-label { color: var(--text-muted); font-size: 9px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.module-setting-value { color: #c5b6ff; font-size: 9px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.module-setting-range { width: 150px; height: 26px; padding: 0; appearance: none; background: transparent; cursor: pointer; }
+.module-setting-range::-webkit-slider-runnable-track { height: 5px; border-radius: 4px; background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--range-progress,50%), #494753 var(--range-progress,50%), #494753 100%); }
+.module-setting-range::-webkit-slider-thumb { width: 15px; height: 15px; margin-top: -5px; appearance: none; border: 2px solid #e6ddff; border-radius: 50%; background: var(--accent); }
+.module-setting-range::-moz-range-track { height: 5px; border-radius: 4px; background: #494753; }
+.module-setting-range::-moz-range-progress { height: 5px; border-radius: 4px; background: var(--accent); }
+.module-setting-range::-moz-range-thumb { width: 15px; height: 15px; border: 2px solid #e6ddff; border-radius: 50%; background: var(--accent); }
+.toggle-compact { width: 27px; height: 15px; }
+.module-setting-choices, .module-setting-slots { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; }
+.choice-chip { padding: 4px 9px; border: 1px solid var(--line-strong); border-radius: 8px; background: transparent; color: var(--text-muted); font-size: 9px; font-weight: 650; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.choice-chip:hover { background: var(--panel-hover); color: var(--text); }
+.choice-chip.selected { border-color: rgba(var(--accent-rgb), .55); background: var(--accent-soft); color: var(--text); }
+.slot-chip { width: 24px; padding: 4px 0; text-align: center; }
+.module-setting-text { width: 180px; padding: 6px 9px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--panel-raised); color: var(--text); font: inherit; font-size: 10px; }
+.module-setting-text:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.module-setting-error { color: #ff8f8f; font-size: 9px; }
+.module-setting-empty { color: var(--text-faint); font-size: 9px; }

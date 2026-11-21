@@ -5,6 +5,9 @@
   "name": "Ascend Client",
   "description": "Ascend Client bootstrap for Minecraft 26.3.",
   "environment": "client",
+  "mixins": [
+    "ascendclient-client.mixins.json"
+  ],
   "entrypoints": {
     "client": [
       "dev.ascend.client.AscendClient"
